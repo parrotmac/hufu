@@ -6,6 +6,8 @@ import android.view.KeyEvent;
 
 /**
  * Created by isaac on 8/15/17.
+ *
+ * TODO: Specify Headunit Reloaded as target of the intent, to ensure that only HUR responds to key presses
  */
 
 public class MediaHelpers {

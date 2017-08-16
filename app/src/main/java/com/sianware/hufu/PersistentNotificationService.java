@@ -4,12 +4,19 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbManager;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.view.KeyEvent;
+
+import
+
+import java.io.IOException;
 
 public class PersistentNotificationService extends Service {
 
@@ -18,6 +25,8 @@ public class PersistentNotificationService extends Service {
 
 
     public static boolean taskIsRunning = false;
+
+    UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
     private static final int NOTIFICATION = 1;
     public static final String CLOSE_ACTION = "close";
@@ -68,25 +77,57 @@ public class PersistentNotificationService extends Service {
     public void onCreate() {
         setupNotifications();
         showNotification();
+
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
+        if (availableDrivers.isEmpty()) {
+            return;
+        }
+
         if(!taskIsRunning) {
             taskIsRunning = true;
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    int logCount = 0;
-                    long lastRunAt = 0;
-                    while(true) {
-                        long now = System.currentTimeMillis()/1000;
-                        if (now > lastRunAt + 1) {
-                            Log.d("IDK", String.format("Current instance has been running for around %d", logCount++));
-                            lastRunAt = now;
-
-                            // Simple test
-//                            if(logCount == 10) {
-//                                MediaHelpers.sendMediaNext(getApplicationContext());
-//                            }
-                        }
+                    // Open a connection to the first available driver.
+                    UsbSerialDriver driver = availableDrivers.get(0);
+                    UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
+                    if (connection == null) {
+                        // You probably need to call UsbManager.requestPermission(driver.getDevice(), ..)
+                        return;
                     }
+
+                    UsbSerialPort port = driver.getPorts().get(0);
+                    try {
+                        port.open(connection);
+                        port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+
+                        while(true) {
+                            byte buffer[] = new byte[16];
+                            int numBytesRead = port.read(buffer, 1000);
+                            Log.d("USB Serial Read", "Read " + numBytesRead + " bytes.");
+                            Log.d("USB Serial Read Data", buffer.toString());
+                        }
+                    } catch (IOException e) {
+                        // Deal with error.
+                    } finally {
+                        port.close();
+                    }
+
+
+//                    int logCount = 0;
+//                    long lastRunAt = 0;
+//                    while(true) {
+//                        long now = System.currentTimeMillis()/1000;
+//                        if (now > lastRunAt + 1) {
+//                            Log.d("IDK", String.format("Current instance has been running for around %d", logCount++));
+//                            lastRunAt = now;
+//
+//                            // Simple test
+////                            if(logCount == 10) {
+////                                MediaHelpers.sendMediaNext(getApplicationContext());
+////                            }
+//                        }
+//                    }
                 }
             }).start();
         }

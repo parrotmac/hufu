@@ -36,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Intent intent = new Intent("com.sianware.START_BACKGROUND_SERVICE");
-        intent.putExtra("value","test");
         intent.setClass(this, ServiceManager.class);
         sendBroadcast(intent);
 
@@ -52,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     public void testBtnClicked(View v)
     {
         Intent intent = new Intent("com.sianware.TEST_BUTTON_CLICKED");
-        intent.putExtra("value","test");
+        intent.putExtra("value","test123");
         intent.setClass(this, ServiceManager.class);
         sendBroadcast(intent);
 
